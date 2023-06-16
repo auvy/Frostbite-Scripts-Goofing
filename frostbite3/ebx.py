@@ -10,6 +10,11 @@ from dbo import Guid
 import res
 import sbr
 
+import re
+
+chunkExpression  = r'\A(..)(..)(..)(..)-(..)(..)-(..)(..)-(..)(..)-(.*)\Z'
+chunkReplacement = r'\4\3\2\1\6\5\8\7\9\10\11'
+
 def unpackLE(typ,data): return unpack("<"+typ,data)
 def unpackBE(typ,data): return unpack(">"+typ,data)
 
@@ -566,6 +571,18 @@ class Dbx:
             return chnkPath
         chnkPath=os.path.join(self.chunkFolder2,ChunkId+".chunk")
         if os.path.isfile(chnkPath):
+            return chnkPath
+       
+        # search for renamed chunks also
+        # (daemon1's tools compatibility)
+        ChunkOk=re.sub(chunkExpression, chunkReplacement, ChunkId)
+        chnkPath=os.path.join(self.chunkFolder,ChunkOk+".chunk")
+        if os.path.isfile(chnkPath):
+            print(chnkPath)
+            return chnkPath
+        chnkPath=os.path.join(self.chunkFolder2,ChunkOk+".chunk")
+        if os.path.isfile(chnkPath):
+            print(chnkPath)
             return chnkPath
 
         print("Chunk does not exist: "+ChunkId)
