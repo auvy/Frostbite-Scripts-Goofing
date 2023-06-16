@@ -9,6 +9,7 @@ import pickle
 from dbo import Guid
 import res
 import sbr
+import dds
 
 import re
 
@@ -560,6 +561,8 @@ class Dbx:
         elif self.prim.desc.name=="OctaneAsset": self.extractGenericSoundAsset(".gin")
         elif self.prim.desc.name=="MovieTextureAsset": self.extractMovieAsset()
         elif self.prim.desc.name=="MovieTexture2Asset": self.extractMovie2Asset()
+        elif self.prim.desc.name=="TextureAsset": self.extractTextureAsset() #doesnt work with all textures
+
 
     def findChunk(self,chnk):
         if chnk.isNull():
@@ -815,3 +818,92 @@ class Dbx:
 
         chnk=self.prim.get("ChunkGuid")
         self.extractChunk(chnk,".webm")
+ 
+
+     def extractTextureAsset(self):
+        print(self.trueFilename)
+        resName=self.findRes(self.trueFilename)
+        if not resName:
+            return
+
+        #Read FB texture header.
+        class Texture:
+            def __init__(self,ebx,f):
+                hdr=ebx.unpack("4I4H2s2B16s15I2I16s",f.read(0x80))
+                self.version=hdr[0]
+                self.type=hdr[1]
+                self.format=hdr[2]
+                self.flags=hdr[3]
+                self.width=hdr[4]
+                self.height=hdr[5]
+                self.depth=hdr[6]
+                self.slices=hdr[7]
+                #unused 2 bytes
+                self.numMipMaps=hdr[9]
+                self.firstMipMap=hdr[10]
+                self.chnk=Guid.frombytes(hdr[11],ebx.bigEndian)
+                self.mipMapSizes=[int(i) for i in hdr[12:27]]
+                self.mipMapChainSize=hdr[27]
+                self.nameHash=hdr[28]
+                self.texGroup=hdr[29].decode().split("\0",1)[0]
+
+        f=open2(resName,"rb")
+        tex=Texture(self,f)
+        f.close()
+
+        enum=dds.getFormatEnum(tex.version)
+        print("Enum version:", tex.version)
+        print("Compression format:", tex.format)
+        print("Texture type:", tex.type)
+
+        if not enum:
+            print("Unsupported version %d" % tex.version)
+            return
+
+        if not dds.remapFormat(enum,tex.format):
+            print("Unsupported compression format %d" % tex.format)
+            return
+
+        if tex.type not in [0,1,2]:
+            print("Unsupported texture type %d" % tex.type)
+            return
+
+        #Load image data from the linked chunk.
+        chnkPath=self.findChunk(tex.chnk)
+        if not chnkPath:
+            return
+
+        f=open(chnkPath,"rb")
+        texData=f.read()
+        f.close()
+
+        #Build DDS header from the data in FB texture header.
+        ddsHdr=dds.DDS_HEADER(tex)
+
+        target=os.path.join(self.outputFolder,self.trueFilename+".dds")
+        f=open2(target,"wb")
+        f.write(ddsHdr.encode())
+        f.write(texData)
+        f.close()
+        
+        
+    def findRes(self,name):
+        name=name.lower()
+        
+        resInfo = None
+        for ress in res.resTable.values():
+            if name in ress.name:
+                resInfo=ress
+        if resInfo is None:
+            return None
+        
+        ext=resInfo.getResExt()
+        print(ext)
+        path=os.path.join(self.resFolder,name+ext)
+        if not os.path.isfile(lp(path)):
+            print("Res does not exist: "+name)
+            return None
+
+        return path
+
+
