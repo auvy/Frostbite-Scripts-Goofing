@@ -885,6 +885,116 @@ class Dbx:
         f.write(ddsHdr.encode())
         f.write(texData)
         f.close()
+
+
+# need for speed Edge .texture/res format is very reminiscent of Rivals
+    def extractTextureAssetEdge(self):
+        resName=self.findRes(self.trueFilename)
+        if not resName:
+            return
+
+        #Read FB texture header.
+        class Texture:
+            def __init__(self,ebx,f):
+                readstuff = f.read(0x80)
+                # edge's textures
+                hdr=ebx.unpack("4I6H16s15I2I16s",readstuff)
+                #4I
+                self.idk1       =hdr[0]
+                self.idk2       =hdr[1]
+                self.type       =hdr[2]
+                self.formatEdge =hdr[3]
+                #6H
+                self.idk3       =hdr[4]
+                self.width      =hdr[5]
+                self.height     =hdr[6]
+                self.depth      =hdr[7]
+                self.idk4       =hdr[8]
+                self.numMipMaps =hdr[9]
+                #16s
+                self.chnk=Guid.frombytes(hdr[10],ebx.bigEndian)
+                #15I
+                self.mipMapSizes=[int(i) for i in hdr[11:26]]
+                #2I
+                self.mipMapChainSize=hdr[26]
+                self.nameHash=hdr[27]
+                #16s
+                self.texGroup=hdr[28].decode().split("\0",1)[0]
+
+        f=open2(resName,"rb")
+        tex=Texture(self,f)
+        f.close()
+
+        # hardcoded dds
+        tex.version = 10
+        enum=dds.getFormatEnum(tex.version)
+
+        trueNumMipmap = sum(x != 0 for x in tex.mipMapSizes)
+        if tex.numMipMaps != trueNumMipmap:
+            print(f"Rubbish mipmap number, changing to: {trueNumMipmap}")
+            tex.numMipMaps = trueNumMipmap
+
+        # edge to known dds formats
+        if tex.formatEdge == 54:
+            tex.format = 20
+            # dxt5 normal
+        elif tex.formatEdge == 55:
+            tex.format = 0
+            # dxt1
+        elif tex.formatEdge == 61:
+            tex.format = 3
+            # ATI1
+        elif tex.formatEdge == 60:
+            tex.format = 3
+            # ATI1       
+        elif tex.formatEdge == 63:
+            tex.format = 17
+            # ATI2 normal
+        else:
+            print(f"Unknown format, aborting and dumping chunk and res to test.")
+
+            # res/texture
+            f=open2(resName,"rb")
+            resdata = f.read()
+            f.close()
+            target=os.path.join(self.outputFolder,self.trueFilename+".TextureRes")
+            f=open2(target,"wb")
+            f.write(resdata)
+            f.close()
+
+            #chunk
+            chnkPath=self.findChunk(tex.chnk)
+            if not chnkPath:
+                print(f"Couldn't find the chunk.")
+                return
+            f=open(chnkPath,"rb")
+            texData=f.read()
+            f.close()
+            target=os.path.join(self.outputFolder,self.trueFilename+".chunk")
+            f=open2(target,"wb")
+            f.write(texData)
+            f.close()
+        
+            return
+        
+
+        #Load image data from the linked chunk.
+        chnkPath=self.findChunk(tex.chnk)
+        if not chnkPath:
+            return
+
+        f=open(chnkPath,"rb")
+        texData=f.read()
+        f.close()
+
+        #Build DDS header from the data in FB texture header.
+        ddsHdr=dds.DDS_HEADER(tex)
+
+        target=os.path.join(self.outputFolder,self.trueFilename+".dds")
+        f=open2(target,"wb")
+        f.write(ddsHdr.encode())
+        f.write(texData)
+        f.close()
         
         
     def findRes(self,name):
