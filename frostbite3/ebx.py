@@ -547,7 +547,7 @@ class Dbx:
     def writeInstance(self,f,cmplx,text):
         f.write(cmplx.desc.name+" "+text+"\n")
 
-    def extractAssets(self,chunkFolder,chunkFolder2,resFolder,outputFolder):
+    def extractAssets(self,chunkFolder,chunkFolder2,resFolder,outputFolder, gameName):
         self.chunkFolder=chunkFolder
         self.chunkFolder2=chunkFolder2
         self.outputFolder=outputFolder
@@ -561,7 +561,7 @@ class Dbx:
         elif self.prim.desc.name=="OctaneAsset": self.extractGenericSoundAsset(".gin")
         elif self.prim.desc.name=="MovieTextureAsset": self.extractMovieAsset()
         elif self.prim.desc.name=="MovieTexture2Asset": self.extractMovie2Asset()
-        elif self.prim.desc.name=="TextureAsset": self.extractTextureAsset() #doesnt work with all textures
+        elif self.prim.desc.name=="TextureAsset": self.extractTextureAsset(gameName)
 
 
     def findChunk(self,chnk):
@@ -820,16 +820,26 @@ class Dbx:
         self.extractChunk(chnk,".webm")
  
 
-     def extractTextureAsset(self):
-        print(self.trueFilename)
+    def extractTextureAsset(self, gameName):
         resName=self.findRes(self.trueFilename)
+        print(resName)
         if not resName:
             return
 
         #Read FB texture header.
         class Texture:
             def __init__(self,ebx,f):
-                hdr=ebx.unpack("4I4H2s2B16s15I2I16s",f.read(0x80))
+                if gameName.lower() in "edge":
+                    self.readHeaderEdge(f, ebx)
+                elif gameName.lower() in "rivals":
+                    self.readHeaderRivals(f, ebx)
+                else:
+                    self.readHeaderDefault(f, ebx)
+            
+            def readHeaderDefault(self, f, ebx):
+                readstuff = f.read(0x80)
+                hdr=ebx.unpack("4I4H2s2B16s15I2I16s",readstuff)
+                # print(f'hdr: {hdr}')
                 self.version=hdr[0]
                 self.type=hdr[1]
                 self.format=hdr[2]
@@ -847,9 +857,71 @@ class Dbx:
                 self.nameHash=hdr[28]
                 self.texGroup=hdr[29].decode().split("\0",1)[0]
 
+            def readHeaderRivals(self, f, ebx):
+                self.readHeaderDefault(f, ebx)
+                if self.format == 3:
+                    self.format = 2
+                    #ati1 to dxt5
+                elif self.format == 20:
+                    self.format = 0
+                    #dsrs to dtx1
+                elif self.format == 19:
+                    self.format = 17
+                    #ati2 normal dxn
+
+            def readHeaderEdge(self, f, ebx):
+                readstuff = f.read(0x80)
+                hdr=ebx.unpack("4I5H2b16s15I2I16s",readstuff)
+                #4I
+                self.idk1       =hdr[0]
+                self.idk2       =hdr[1]
+                self.type       =hdr[2]
+                self.formatEdge =hdr[3]
+                #6H
+                self.idk3       =hdr[4]
+                self.width      =hdr[5]
+                self.height     =hdr[6]
+                self.depth      =hdr[7]
+                self.idk4       =hdr[8]
+                #2b
+                self.numMipMaps =hdr[9]
+                self.idk5       =hdr[10]
+                #16s
+                self.chnk=Guid.frombytes(hdr[11],ebx.bigEndian)
+                #15I
+                self.mipMapSizes=[int(i) for i in hdr[12:27]]
+                #2I
+                self.mipMapChainSize=hdr[27]
+                self.nameHash=hdr[28]
+                #16s
+                self.texGroup=hdr[29].decode().split("\0",1)[0]
+                
+                if self.formatEdge == 54:
+                    # self.format = 20
+                    self.format = 0
+                    # dxt1
+                elif self.formatEdge == 55:
+                    self.format = 0
+                    # dxt1
+                elif self.formatEdge == 61:
+                    # self.format = 3
+                    self.format = 2
+                    # ATI1
+                elif self.formatEdge == 60:
+                    # self.format = 3
+                    self.format = 2
+                    # ATI1       
+                elif self.formatEdge == 63:
+                    self.format = 17
+                    # ATI2
+                    
+                self.type   = 0
+                self.version = 10
+                self.slices = 1
+                    
         f=open2(resName,"rb")
         tex=Texture(self,f)
-        f.close()
+        f.close() 
 
         enum=dds.getFormatEnum(tex.version)
         print("Enum version:", tex.version)
