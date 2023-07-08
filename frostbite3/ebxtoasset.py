@@ -3,6 +3,8 @@ from struct import unpack,pack
 import ebx
 import res
 
+gameName = "edge"
+
 #Choose where you dumped the files and where to put the extracted assets.
 dumpDirectory   = r"E:\GameRips\NFS\NFSR\pc\dump"
 targetDirectory = r"E:\GameRips\NFS\NFSR\pc\assets"
@@ -37,4 +39,4 @@ res.loadResTable(dumpDirectory)
 for dir0, dirs, ff in os.walk(inputFolder):
     for fname in ff:
         dbx=ebx.Dbx(os.path.join(dir0,fname),ebxFolder)
-        dbx.extractAssets(chunkFolder,chunkFolder2,resFolder,targetDirectory)
+        dbx.extractAssets(chunkFolder,chunkFolder2,resFolder,targetDirectory, gameName)
