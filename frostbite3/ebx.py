@@ -868,6 +868,12 @@ class Dbx:
                 elif self.format == 19:
                     self.format = 17
                     #ati2 normal dxn
+                elif self.format == 4:
+                    self.format = 3
+                    #ati2 to ati1
+                elif self.format == 11:
+                    self.format = 9
+                    # idk
 
             def readHeaderEdge(self, f, ebx):
                 readstuff = f.read(0x80)
@@ -897,23 +903,25 @@ class Dbx:
                 self.texGroup=hdr[29].decode().split("\0",1)[0]
                 
                 if self.formatEdge == 54:
-                    # self.format = 20
                     self.format = 0
                     # dxt1
                 elif self.formatEdge == 55:
                     self.format = 0
                     # dxt1
                 elif self.formatEdge == 61:
-                    # self.format = 3
                     self.format = 2
                     # ATI1
                 elif self.formatEdge == 60:
-                    # self.format = 3
                     self.format = 2
                     # ATI1       
                 elif self.formatEdge == 63:
                     self.format = 17
                     # ATI2
+                elif self.formatEdge == 62:
+                    self.format = 3
+                    
+                elif self.formatEdge == 20:
+                    self.format = 9
                     
                 self.type   = 0
                 self.version = 10
