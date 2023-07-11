@@ -124,40 +124,6 @@ def remapFormat(fmt,val):
 
     return formatMap[val]
 
-# nfs rivals texture formats lol
-# normals are apparently dxt1
-# DSRS are dxt5
-def remapFormatRivals(fmt,val):
-    formatMap = {
-        fmt.TextureFormat_DXT1:             (0x04,b"DXT1"),
-        fmt.TextureFormat_DXT1A:            (0x04,b"DXT1"),
-        fmt.TextureFormat_DXT3:             (0x04,b"DXT3"),
-        fmt.TextureFormat_DXT5:             (0x04,b"DXT5"),
-        fmt.TextureFormat_DXT5A:            (0x04,b"DXT5"),
-        fmt.TextureFormat_DXN:              (0x04,b"ATI2"),
-        fmt.TextureFormat_RGB565:           (0x40,16,0xf800,0x07e0,0x001f,0),
-        fmt.TextureFormat_RGB888:           (0x40,24,0xff0000,0x00ff00,0x0000ff,0),
-        fmt.TextureFormat_ARGB1555:         (0x41,16,0x7c00,0x03e0,0x001f,0x8000),
-        fmt.TextureFormat_ARGB4444:         (0x41,16,0x0f00,0x00f0,0x000f,0xf000),
-        fmt.TextureFormat_ARGB8888:         (0x41,32,0x00ff0000,0x0000ff00,0x000000ff,0xff000000),
-        fmt.TextureFormat_L8:               (0x20000,8,0xff,0,0,0),
-        fmt.TextureFormat_L16:              (0x20000,16,0xffff,0,0,0),
-        fmt.TextureFormat_ABGR16:           (0x04,b"\x24\0\0\0"),
-        fmt.TextureFormat_ABGR16F:          (0x04,b"\x71\0\0\0"),
-        fmt.TextureFormat_ABGR32F:          (0x04,b"\x74\0\0\0"),
-        fmt.TextureFormat_NormalDXN:        (0x04,b"ATI2"),
-        fmt.TextureFormat_NormalDXT1:       (0x04,b"DXT1"),
-        fmt.TextureFormat_NormalDXT5:       (0x04,b"DXT5"),
-        fmt.TextureFormat_NormalDXT5RGA:    (0x04,b"DXT1"),
-    }
-
-    if val not in formatMap or val==0xFFFFFFFF:
-        return None
-
-    return formatMap[val]
-
-
-
 #Standard FB2 list, found in BF3 debug strings
 class TextureFormat_v10:
     TextureFormat_DXT1 = 0x0
