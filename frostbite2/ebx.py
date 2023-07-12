@@ -731,6 +731,27 @@ class Dbx:
         texData=f.read()
         f.close()
 
+        # a bandaid fix for some car textures
+        # until a way to get the highest resolution image data is found
+        if tex.firstMipMap == 1:
+            tex.firstMipMap == 0
+            
+            tex.width = tex.width // 2
+            tex.height = tex.height // 2
+            
+            tex.mipMapChainSize = tex.mipMapChainSize - tex.mipMapSizes[0]
+            tex.mipMapSizes.pop(0)
+            tex.mipMapSizes.append(0)            
+            tex.numMipMaps = tex.numMipMaps - 1
+            
+            ddsHdr=dds.DDS_HEADER(tex)
+
+            target=os.path.join(self.outputFolder,self.trueFilename+"_readable.dds")
+            f=open2(target,"wb")
+            f.write(ddsHdr.encode())
+            f.write(texData)
+            f.close()
+
         #Build DDS header from the data in FB texture header.
         ddsHdr=dds.DDS_HEADER(tex)
 
