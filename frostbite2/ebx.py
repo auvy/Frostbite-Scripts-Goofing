@@ -543,6 +543,58 @@ class Dbx:
         print("Chunk does not exist: "+ChunkId)
         return None
 
+
+    def mergeTextureData(self, texChunk):
+        if texChunk.isNull():
+            return None
+        ChunkId        = texChunk.format()
+        ChunkIdRenamed =re.sub(chunkExpression, chunkReplacement, ChunkId)
+        
+        chunkPath1 = False
+        chunkPath2 = False
+        
+        chnkPath=os.path.join(self.chunkFolder,ChunkId+".chunk")
+        if os.path.isfile(chnkPath):
+            chunkPath1 = chnkPath
+        chnkPath=os.path.join(self.chunkFolder2,ChunkId+".chunk")
+        if os.path.isfile(chnkPath):
+            chunkPath2 = chnkPath
+
+        # search for renamed chunks
+        chnkPath=os.path.join(self.chunkFolder,ChunkIdRenamed+".chunk")
+        if os.path.isfile(chnkPath):
+            chunkPath1 = chnkPath
+        chnkPath=os.path.join(self.chunkFolder2,ChunkIdRenamed+".chunk")
+        if os.path.isfile(chnkPath):
+            chunkPath2 = chnkPath
+        
+        if chunkPath1 and chunkPath2:
+            return self.mergeMipmaps(chunkPath1, chunkPath2)
+        else:
+            return False
+        
+    def mergeMipmaps(self, chnkPath1, chnkPath2):
+        size1 = os.path.getsize(chnkPath1)
+        size2 = os.path.getsize(chnkPath2)
+        
+        f1 = open(chnkPath1, 'rb')
+        f2 = open(chnkPath2, 'rb')
+        
+        data1 = f1.read()
+        data2 = f2.read()
+        
+        f1.close()
+        f2.close()
+                
+        if size1 > size2:
+            return data1 + data2
+        elif size2 > size1:
+            return data2 + data1
+        elif size1 == size2:
+            # probably same texture. idk.
+            return data1
+
+    
     def extractChunk(self,chnk,ext,idx=-1,totalChunks=0):
         currentChunkName=self.findChunk(chnk)
         if not currentChunkName:
@@ -734,23 +786,9 @@ class Dbx:
         # a bandaid fix for some car textures
         # until a way to get the highest resolution image data is found
         if tex.firstMipMap == 1:
-            tex.firstMipMap == 0
-            
-            tex.width = tex.width // 2
-            tex.height = tex.height // 2
-            
-            tex.mipMapChainSize = tex.mipMapChainSize - tex.mipMapSizes[0]
-            tex.mipMapSizes.pop(0)
-            tex.mipMapSizes.append(0)            
-            tex.numMipMaps = tex.numMipMaps - 1
-            
-            ddsHdr=dds.DDS_HEADER(tex)
-
-            target=os.path.join(self.outputFolder,self.trueFilename+"_readable.dds")
-            f=open2(target,"wb")
-            f.write(ddsHdr.encode())
-            f.write(texData)
-            f.close()
+            mergeData = self.mergeTextureData(tex.chnk)
+            if mergeData:
+                texData = mergeData
 
         #Build DDS header from the data in FB texture header.
         ddsHdr=dds.DDS_HEADER(tex)
